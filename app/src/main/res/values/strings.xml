@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Clicker</string>
+    <string name="device_name">Название устройства</string>
+    <string name="device_ip">IP-адрес устройства</string>
+    <string name="login">Логин</string>
+    <string name="password">Пароль</string>
+    <string name="add">Добавить</string>
+    <string name="save_change">Сохранить</string>
+    <string name="coordinate_name">Название точки</string>
+    <string name="warning">Внимание</string>
+    <string name="sure_delete_device">Вы уверены, что хотите удалить устройство?</string>
+    <string name="yes">Да</string>
+    <string name="no">Нет</string>
+    <string name="coordinates">Координаты</string>
+    <string name="time">Время</string>
+    <string name="clicks">Клики</string>
+    <string name="sure_delete_coordinates">Вы уверены, что хотите удалить точку?</string>
+    <string name="back">Назад</string>
+    <string name="devices">Устройства</string>
+    <string name="add_device">Добавить устройство</string>
+    <string name="add_coordinates">Добавить точку</string>
+    <string name="edit_device">Изменить устройство</string>
+    <string name="edit_coordinates">Изменить точку</string>
+    <string name="choose_time">Выбор времени</string>
+    <string name="ok">ОК</string>
+    <string name="cancel">Отмена</string>
+    <string name="step">Шаг</string>
+    <string name="invalid_ip">Неправильный ip-адрес</string>
+    <string name="key_down_time">Время нажатия (мс)</string>
+    <string name="error_dialog_title">Ошибка</string>
+    <string name="connection_error">Проблема подключения к устройству</string>
+    <string name="no_coordinates">Нажмите + чтобы добавить</string>
+    <string name="no_devices">Нажмите + чтобы добавить</string>
+    <string name="dots">Точки</string>
+    <string name="invalid_character">Недопустимый символ</string>
+</resources>
