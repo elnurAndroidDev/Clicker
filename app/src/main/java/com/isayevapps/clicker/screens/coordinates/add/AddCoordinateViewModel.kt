@@ -4,20 +4,23 @@ import android.annotation.SuppressLint
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.isayevapps.clicker.data.db.CoordinateEntity
 import com.isayevapps.clicker.data.db.CoordinatesDao
 import com.isayevapps.clicker.data.db.DeviceDao
 import com.isayevapps.clicker.data.db.DeviceEntity
 import com.isayevapps.clicker.data.network.ApiService
+import com.isayevapps.clicker.data.network.DeleteDot
 import com.isayevapps.clicker.data.network.Dot
 import com.isayevapps.clicker.data.network.Move
 import com.isayevapps.clicker.data.network.Result
 import com.isayevapps.clicker.data.network.safeApiCall
+import com.isayevapps.clicker.screens.coordinates.Coordinate
 import com.isayevapps.clicker.utils.timeStrToInt
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -31,65 +34,89 @@ class AddCoordinateViewModel @Inject constructor(
     private val deviceId = savedStateHandle.get<Int>("deviceId") ?: 0
     private val _uiState = MutableStateFlow(AddCoordinateUiState(deviceId = deviceId))
     val uiState = _uiState.asStateFlow()
-
     private lateinit var device: DeviceEntity
+    var idInTimeAndClicksList = 0
 
     init {
         viewModelScope.launch {
             device = deviceDao.getById(deviceId)
-            moveApiCall(0, 0, onSuccess = {})
-        }
-    }
-
-    fun save(onSuccess: () -> Unit) {
-        viewModelScope.launch {
-            val coordinates = coordinatesDao.getAllByDeviceId(deviceId)
-            var id = 0
-            for (coordinate in coordinates) {
-                if (coordinate.index != id)
-                    break
-                id++
-            }
-            val url = "http://${device.name}.local/api"
-            val (h, m, s) = _uiState.value.time.split(":").map { it.toInt() }
-            val x = _uiState.value.x
-            val y = _uiState.value.y
-            val t = _uiState.value.keyDownTime
-            val i = _uiState.value.intervalTime
-            val n = _uiState.value.clicksCount
-            val request = Dot(id, x, y, t, i, h, m, s, n)
-            val result = safeApiCall { apiService.dot(url, request) }
-            when (result) {
-                is Result.Success -> {
-                    coordinatesDao.insert(
-                        CoordinateEntity(
-                            index = id,
-                            deviceId = deviceId,
-                            x = x,
-                            y = y,
-                            time = timeStrToInt(_uiState.value.time),
-                            clicksCount = n,
-                            name = _uiState.value.name,
-                            keyDownTime = t,
-                            intervalTime = i
-                        ))
-                    onSuccess()
-                }
-
-                is Result.Error -> {
-                    _uiState.value = _uiState.value.copy(error = result.exception.message)
-                }
+            coordinatesDao.getAllByDeviceIdFlow(deviceId).collect { coordinates ->
+                _uiState.value =
+                    _uiState.value.copy(coordinates = coordinates.map { it.toCoordinate() })
             }
         }
     }
 
-    private suspend fun moveApiCall(x: Int, y: Int, onSuccess: () -> Unit) {
+    fun add() = viewModelScope.launch {
+        val coordinates = _uiState.value.coordinates
+        var index = 0
+        for (coordinate in coordinates) {
+            if (coordinate.index != index)
+                break
+            index++
+        }
+        val time = "00:00:00"
+        val x = _uiState.value.x
+        val y = _uiState.value.y
+        val t = 100
+        val i = 100
+        val n = 1
+        val coordinate = Coordinate(0, index, deviceId, x, y, n, timeStrToInt(time), t, i)
+        send(coordinate)
+    }
+
+    fun delete() = viewModelScope.launch {
+        val coordinate = _uiState.value.coordinates[idInTimeAndClicksList]
         val url = "http://${device.name}.local/api"
-        val request = Move(x, y)
-        val result = safeApiCall { apiService.move(url, request) }
+        val request = DeleteDot(coordinate.index)
+        val result =
+            withContext(Dispatchers.IO) { safeApiCall { apiService.deleteDot(url, request) } }
         when (result) {
             is Result.Success -> {
-                onSuccess()
+                withContext(Dispatchers.IO) {
+                    coordinatesDao.delete(coordinate.id)
+                }
+            }
+
+            is Result.Error -> {
+                _uiState.value = _uiState.value.copy(error = result.exception.message)
+            }
+        }
+    }
+
+    suspend fun send(coordinate: Coordinate) {
+        val url = "http://${device.name}.local/api"
+        val h = coordinate.time / 3600
+        val m = (coordinate.time % 3600) / 60
+        val s = coordinate.time % 60
+        val index = coordinate.index
+        val x = coordinate.x
+        val y = coordinate.y
+        val t = coordinate.keyDownTime
+        val i = coordinate.intervalTime
+        val n = coordinate.clicksCount
+        val request = Dot(index, x, y, t, i, h, m, s, n)
+        val result = withContext(Dispatchers.IO) { safeApiCall { apiService.dot(url, request) } }
+        when (result) {
+            is Result.Success -> {
+                withContext(Dispatchers.IO) {
+                    coordinatesDao.insert(coordinate.toCoordinateEntity())
+                }
+            }
+
+            is Result.Error -> {
+                _uiState.value = _uiState.value.copy(error = result.exception.message)
+            }
+        }
+    }
+
+    private suspend fun moveApiCall(x: Int, y: Int) {
+        val url = "http://${device.name}.local/api"
+        val request = Move(x, y)
+        val result = withContext(Dispatchers.IO) { safeApiCall { apiService.move(url, request) } }
+        when (result) {
+            is Result.Success -> {
+                _uiState.value = _uiState.value.copy(x = x, y = y)
             }
 
             is Result.Error -> {
@@ -102,20 +129,33 @@ class AddCoordinateViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
-    fun onNameChange(name: String) {
-        _uiState.value = _uiState.value.copy(name = name)
+    fun showTimeDialog() {
+        _uiState.value = _uiState.value.copy(showTimeDialog = true)
+    }
+
+    fun hideTimeDialog() {
+        _uiState.value = _uiState.value.copy(showTimeDialog = false)
+    }
+
+    fun showDeleteDialog() {
+        _uiState.value = _uiState.value.copy(showDeleteDialog = true)
+    }
+
+    fun hideDeleteDialog() {
+        _uiState.value = _uiState.value.copy(showDeleteDialog = false)
     }
 
     @SuppressLint("DefaultLocale")
-    fun onTimeChange(hours: Int, minutes: Int, seconds: Int) {
-        _uiState.value =
-            _uiState.value.copy(time = String.format("%02d:%02d:%02d", hours, minutes, seconds))
+    fun onTimeChange(h: Int, m: Int, s: Int) = viewModelScope.launch {
+        val coordinate = _uiState.value.coordinates[idInTimeAndClicksList]
+        send(coordinate.copy(time = h * 3600 + m * 60 + s))
     }
 
-    fun onKeyDownTimeChange(keyDownTime: String) {
+    fun onKeyDownTimeChange(id: Int, keyDownTime: String) = viewModelScope.launch {
+        val coordinate = _uiState.value.coordinates[id]
         if (keyDownTime.isBlank()) {
-            _uiState.value = _uiState.value.copy(keyDownTime = 0)
-            return
+            send(coordinate.copy(keyDownTime = 0))
+            return@launch
         }
         if (keyDownTime.all { it.isDigit() }) {
             val keyDownTimeUShort = try {
@@ -123,14 +163,15 @@ class AddCoordinateViewModel @Inject constructor(
             } catch (e: NumberFormatException) {
                 UShort.MAX_VALUE
             }
-            _uiState.value = _uiState.value.copy(keyDownTime = keyDownTimeUShort.toInt())
+            send(coordinate.copy(keyDownTime = keyDownTimeUShort.toInt()))
         }
     }
 
-    fun onIntervalChange(interval: String) {
+    fun onIntervalChange(id: Int, interval: String) = viewModelScope.launch {
+        val coordinate = _uiState.value.coordinates[id]
         if (interval.isBlank()) {
-            _uiState.value = _uiState.value.copy(intervalTime = 0)
-            return
+            send(coordinate.copy(intervalTime = 0))
+            return@launch
         }
         if (interval.all { it.isDigit() }) {
             val intervalUShort = try {
@@ -138,24 +179,7 @@ class AddCoordinateViewModel @Inject constructor(
             } catch (e: NumberFormatException) {
                 UShort.MAX_VALUE
             }
-            _uiState.value = _uiState.value.copy(intervalTime = intervalUShort.toInt())
-        }
-    }
-
-    fun onXChange(x: String) = viewModelScope.launch {
-        if (x.isBlank())
-            moveApiCall(0, _uiState.value.y) {
-                _uiState.value = _uiState.value.copy(x = 0)
-            }
-        if (x.all { it.isDigit() }) {
-            val xUShort = try {
-                x.toUShort()
-            } catch (e: NumberFormatException) {
-                UShort.MAX_VALUE
-            }
-            moveApiCall(xUShort.toInt(), _uiState.value.y) {
-                _uiState.value = _uiState.value.copy(x = xUShort.toInt())
-            }
+            send(coordinate.copy(intervalTime = intervalUShort.toInt()))
         }
     }
 
@@ -163,82 +187,51 @@ class AddCoordinateViewModel @Inject constructor(
         val x = _uiState.value.x
         val step = _uiState.value.step
         if (x + step <= UShort.MAX_VALUE.toInt())
-            moveApiCall(x + step, _uiState.value.y) {
-                _uiState.value = _uiState.value.copy(x = x + step)
-            }
+            moveApiCall(x + step, _uiState.value.y)
         else
-            moveApiCall(UShort.MAX_VALUE.toInt(), _uiState.value.y) {
-                _uiState.value = _uiState.value.copy(x = UShort.MAX_VALUE.toInt())
-            }
+            moveApiCall(0 + step, _uiState.value.y)
     }
 
     fun decreaseX() = viewModelScope.launch {
         val x = _uiState.value.x
         val step = _uiState.value.step
-        if (x - step >= 0)
-            moveApiCall(x - step, _uiState.value.y) {
-                _uiState.value = _uiState.value.copy(x = x - step)
-            }
+        if (x - step >= UShort.MIN_VALUE.toInt())
+            moveApiCall(x - step, _uiState.value.y)
         else
-            moveApiCall(0, _uiState.value.y) {
-                _uiState.value = _uiState.value.copy(x = 0)
-            }
-    }
-
-    fun onYChange(y: String) = viewModelScope.launch {
-        if (y.isBlank())
-            moveApiCall(_uiState.value.x, 0) {
-                _uiState.value = _uiState.value.copy(y = 0)
-            }
-        if (y.all { it.isDigit() }) {
-            val yUShort = try {
-                y.toUShort()
-            } catch (e: NumberFormatException) {
-                UShort.MAX_VALUE
-            }
-            moveApiCall(_uiState.value.x, yUShort.toInt()) {
-                _uiState.value = _uiState.value.copy(y = yUShort.toInt())
-            }
-        }
+            moveApiCall(UShort.MAX_VALUE.toInt() - step, _uiState.value.y)
     }
 
     fun increaseY() = viewModelScope.launch {
         val y = _uiState.value.y
         val step = _uiState.value.step
         if (y + step <= UShort.MAX_VALUE.toInt())
-            moveApiCall(_uiState.value.x, y + step) {
-                _uiState.value = _uiState.value.copy(y = y + step)
-            }
+            moveApiCall(_uiState.value.x, y + step)
         else
-            moveApiCall(_uiState.value.x, UShort.MAX_VALUE.toInt()) {
-                _uiState.value = _uiState.value.copy(y = UShort.MAX_VALUE.toInt())
-            }
+            moveApiCall(_uiState.value.x, 0 + step)
     }
 
     fun decreaseY() = viewModelScope.launch {
         val y = _uiState.value.y
         val step = _uiState.value.step
-        if (y - step >= 0)
-            moveApiCall(_uiState.value.x, y - step) {
-                _uiState.value = _uiState.value.copy(y = y - step)
-            }
+        if (y - step >= UShort.MIN_VALUE.toInt())
+            moveApiCall(_uiState.value.x, y - step)
         else
-            _uiState.value = _uiState.value.copy(y = 0)
+            moveApiCall(_uiState.value.x, UShort.MAX_VALUE.toInt() - step)
     }
 
     fun onStepChange(step: Int) {
         _uiState.value = _uiState.value.copy(step = step)
     }
 
-    fun onClicksCountPlus() {
-        val clicksCount = _uiState.value.clicksCount
-        if (clicksCount < 255)
-            _uiState.value = _uiState.value.copy(clicksCount = clicksCount + 1)
+    fun onClicksCountPlus(id: Int) = viewModelScope.launch {
+        val coordinate = _uiState.value.coordinates[id]
+        if (coordinate.clicksCount < 255)
+            send(coordinate.copy(clicksCount = coordinate.clicksCount + 1))
     }
 
-    fun onClicksCountMinus() {
-        val clicksCount = _uiState.value.clicksCount
-        if (clicksCount > 1)
-            _uiState.value = _uiState.value.copy(clicksCount = clicksCount - 1)
+    fun onClicksCountMinus(id: Int) = viewModelScope.launch {
+        val coordinate = _uiState.value.coordinates[id]
+        if (coordinate.clicksCount > 1)
+            send(coordinate.copy(clicksCount = coordinate.clicksCount - 1))
     }
 }

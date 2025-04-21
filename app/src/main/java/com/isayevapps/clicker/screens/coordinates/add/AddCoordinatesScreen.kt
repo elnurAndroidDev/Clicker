@@ -1,9 +1,7 @@
 package com.isayevapps.clicker.screens.coordinates.add
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,14 +10,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,22 +28,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.isayevapps.clicker.R
-import com.isayevapps.clicker.screens.common.AppTextField
 import com.isayevapps.clicker.screens.common.ErrorDialog
+import com.isayevapps.clicker.screens.common.TimeAndClicksItem
+import com.isayevapps.clicker.screens.common.TimeAndClicksUiState
 import com.isayevapps.clicker.screens.coordinates.components.TimePickerDialog
+import com.isayevapps.clicker.utils.timeIntToStr
 
 @Composable
 fun AddCoordinatesScreen(
@@ -54,120 +51,128 @@ fun AddCoordinatesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    var showDialog by rememberSaveable { mutableStateOf(false) }
-    if (showDialog) {
+    if (uiState.showTimeDialog) {
         TimePickerDialog(
             initialHours = 0,
             initialMinutes = 0,
             initialSeconds = 0,
             onTimeConfirm = { hours, minutes, seconds ->
                 viewModel.onTimeChange(hours, minutes, seconds)
-                showDialog = false
+                viewModel.hideTimeDialog()
             },
             onDismiss = {
-                showDialog = false
+                viewModel.hideTimeDialog()
+            }
+        )
+    }
+
+    if (uiState.showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.hideDeleteDialog() },
+            title = { Text(stringResource(R.string.warning)) },
+            text = { Text(stringResource(R.string.sure_delete_coordinates)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.delete()
+                        viewModel.hideDeleteDialog()
+                    }
+                ) {
+                    Text(stringResource(R.string.yes))
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { viewModel.hideDeleteDialog() }
+                ) {
+                    Text(stringResource(R.string.no))
+                }
             }
         )
     }
     if (uiState.error != null)
         ErrorDialog(uiState.error.toString(), viewModel::hideErrorDialog)
+
+    AddCoordinatesContent(
+        modifier = modifier,
+        uiState = uiState,
+        onTimeClick = {
+            viewModel.idInTimeAndClicksList = it
+            viewModel.showTimeDialog()
+        },
+        onClicksCountPlus = viewModel::onClicksCountPlus,
+        onClicksCountMinus = viewModel::onClicksCountMinus,
+        onKeyDownTimeChange = viewModel::onKeyDownTimeChange,
+        onIntervalChange = viewModel::onIntervalChange,
+        onStepChange = viewModel::onStepChange,
+        onDecreaseX = viewModel::decreaseX,
+        onIncreaseX = viewModel::increaseX,
+        onDecreaseY = viewModel::decreaseY,
+        onIncreaseY = viewModel::increaseY,
+        onAddClick = viewModel::add,
+        onDeleteClick = {
+            viewModel.idInTimeAndClicksList = it
+            viewModel.showDeleteDialog()
+        }
+    )
+
+}
+
+@Composable
+fun AddCoordinatesContent(
+    uiState: AddCoordinateUiState,
+    onTimeClick: (Int) -> Unit = {},
+    onKeyDownTimeChange: (Int, String) -> Unit = { _, _ -> },
+    onIntervalChange: (Int, String) -> Unit = { _, _ -> },
+    onStepChange: (Int) -> Unit = {},
+    onClicksCountPlus: (Int) -> Unit = {},
+    onClicksCountMinus: (Int) -> Unit = {},
+    onDecreaseX: () -> Unit = {},
+    onIncreaseX: () -> Unit = {},
+    onDecreaseY: () -> Unit = {},
+    onIncreaseY: () -> Unit = {},
+    onAddClick: () -> Unit = {},
+    onDeleteClick: (Int) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        AppTextField(
-            value = uiState.name,
-            onValueChange = viewModel::onNameChange,
-            label = stringResource(R.string.coordinate_name)
-        )
-
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                AppTextField(
-                    value = uiState.time,
-                    readOnly = true,
-                    onValueChange = {},
-                    label = stringResource(R.string.time)
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f)
+        ) {
+            val coordinates = uiState.coordinates
+            items(coordinates.size, key = { coordinates[it].id }) {
+                TimeAndClicksItem(
+                    TimeAndClicksUiState(
+                        id = coordinates[it].id,
+                        index = coordinates[it].index,
+                        time = timeIntToStr(coordinates[it].time),
+                        clicksCount = coordinates[it].clicksCount,
+                        onTimeClick = { onTimeClick(it) },
+                        onClicksCountPlus = { onClicksCountPlus(it) },
+                        onClicksCountMinus = { onClicksCountMinus(it) },
+                        onKeyDownTimeChange = { s -> onKeyDownTimeChange(it, s) },
+                        onIntervalChange = { s -> onIntervalChange(it, s) },
+                        onDeleteClick = { onDeleteClick(it) }
+                    )
                 )
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .clickable { showDialog = true }
-                        .background(Color.Transparent))
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                Text(stringResource(R.string.clicks), fontSize = 14.sp)
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            if (coordinates.size < 16)
+                item {
                     Button(
-                        enabled = uiState.clicksCount > 1,
-                        onClick = viewModel::onClicksCountMinus
+                        modifier = Modifier.padding(top = 16.dp),
+                        onClick = {
+                            onAddClick()
+                        }
                     ) {
-                        Text("—")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "${uiState.clicksCount}", fontSize = 20.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        enabled = uiState.clicksCount < 255,
-                        onClick = viewModel::onClicksCountPlus
-                    ) {
-                        Text("+")
+                        Text("Добавить время")
                     }
                 }
-            }
-        }
-        Row {
-            AppTextField(
-                value = uiState.keyDownTime.toString(),
-                onValueChange = viewModel::onKeyDownTimeChange,
-                label = stringResource(R.string.key_down_time),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            AppTextField(
-                value = uiState.intervalTime.toString(),
-                onValueChange = viewModel::onIntervalChange,
-                label = "Интервал (мс)",
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
-        }
-        Row {
-            AppTextField(
-                value = uiState.x.toString(),
-                onValueChange = viewModel::onXChange,
-                label = "X",
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            AppTextField(
-                value = uiState.y.toString(),
-                onValueChange = viewModel::onYChange,
-                label = "Y",
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -177,7 +182,7 @@ fun AddCoordinatesScreen(
             )
             Slider(
                 value = uiState.step.toFloat(),
-                onValueChange = { viewModel.onStepChange(it.toInt()) },
+                onValueChange = { onStepChange(it.toInt()) },
                 valueRange = 10f..100f,
                 steps = 9,
                 modifier = Modifier
@@ -186,7 +191,7 @@ fun AddCoordinatesScreen(
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            IconButton(onClick = viewModel::decreaseY, modifier = Modifier.size(56.dp)) {
+            IconButton(onClick = onDecreaseY, modifier = Modifier.size(56.dp)) {
                 Icon(
                     Icons.Filled.KeyboardArrowUp,
                     modifier = Modifier
@@ -198,7 +203,7 @@ fun AddCoordinatesScreen(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = viewModel::decreaseX, modifier = Modifier.size(56.dp)) {
+                IconButton(onClick = onDecreaseX, modifier = Modifier.size(56.dp)) {
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                         modifier = Modifier
@@ -209,7 +214,7 @@ fun AddCoordinatesScreen(
                     )
                 }
                 Spacer(modifier = Modifier.width(56.dp)) // Adjust spacing as needed
-                IconButton(onClick = viewModel::increaseX, modifier = Modifier.size(56.dp)) {
+                IconButton(onClick = onIncreaseX, modifier = Modifier.size(56.dp)) {
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         modifier = Modifier
@@ -221,7 +226,7 @@ fun AddCoordinatesScreen(
                 }
             }
 
-            IconButton(onClick = viewModel::increaseY, modifier = Modifier.size(56.dp)) {
+            IconButton(onClick = onIncreaseY, modifier = Modifier.size(56.dp)) {
                 Icon(
                     Icons.Filled.KeyboardArrowDown,
                     modifier = Modifier
@@ -232,31 +237,11 @@ fun AddCoordinatesScreen(
                 )
             }
         }
-        Spacer(modifier = Modifier.weight(1f))
-        Button(
-            enabled = uiState.name.isNotBlank(),
-            onClick = {
-                viewModel.save {
-                    navController.navigateUp()
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = stringResource(R.string.add),
-                fontSize = 16.sp,
-                modifier = Modifier.padding(4.dp)
-            )
-        }
-
     }
-
 }
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun AddCoordinatesScreenPreview() {
-//    AddCoordinatesScreen(
-//        Modifier.fillMaxSize()
-//    )
+    AddCoordinatesContent(uiState = AddCoordinateUiState(), modifier = Modifier.fillMaxSize())
 }

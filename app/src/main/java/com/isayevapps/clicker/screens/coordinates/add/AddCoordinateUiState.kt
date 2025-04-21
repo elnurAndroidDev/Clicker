@@ -1,14 +1,14 @@
 package com.isayevapps.clicker.screens.coordinates.add
 
+import com.isayevapps.clicker.screens.coordinates.Coordinate
+
 data class AddCoordinateUiState(
     val deviceId: Int = 0,
-    val name: String = "",
-    val time: String = "00:00:00",
+    val coordinates: List<Coordinate> = emptyList(),
     val x: Int = 0,
     val y: Int = 0,
     val step: Int = 10,
-    val clicksCount: Int = 1,
-    val keyDownTime: Int = 100,
-    val intervalTime: Int = 100,
-    val error: String? = null
+    val error: String? = null,
+    val showDeleteDialog: Boolean = false,
+    val showTimeDialog: Boolean = false
 )

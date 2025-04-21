@@ -36,7 +36,7 @@ fun AppTextField(
                 value = value,
                 onValueChange = onValueChange,
                 readOnly = readOnly,
-                label = { Text(label, fontSize = 14.sp) },
+                label = { Text(label, fontSize = 12.sp) },
                 prefix = { if (prefix != null) Text(prefix, fontSize = 16.sp) },
                 visualTransformation = visualTransformation,
                 textStyle = TextStyle(fontSize = 16.sp),

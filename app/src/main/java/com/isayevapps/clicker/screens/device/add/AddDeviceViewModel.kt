@@ -12,9 +12,11 @@ import com.isayevapps.clicker.data.network.Result
 import com.isayevapps.clicker.data.network.safeApiCall
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -44,10 +46,13 @@ class AddDeviceViewModel @Inject constructor(
             val url = "http://${_uiState.value.deviceName}.local/api"
             val request = Login()
             _uiState.value = _uiState.value.copy(isLoading = true)
-            val result = safeApiCall { apiService.login(url, request) }
+            val result =
+                withContext(Dispatchers.IO) { safeApiCall { apiService.login(url, request) } }
             when (result) {
                 is Result.Success -> {
+                    withContext(Dispatchers.IO) {
                     deviceDao.insert(DeviceEntity(name = _uiState.value.deviceName))
+                        }
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     navigateBack()
                 }
