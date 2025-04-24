@@ -17,13 +17,15 @@ fun TimePickerDialog(
     initialHours: Int = 0,
     initialMinutes: Int = 0,
     initialSeconds: Int = 0,
-    onTimeConfirm: (hours: Int, minutes: Int, seconds: Int) -> Unit,
+    initialMillis: Int = 0,
+    onTimeConfirm: (hours: Int, minutes: Int, seconds: Int, millis: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     // Локальные состояния для хранения выбранного времени
     var selectedHours by remember { mutableIntStateOf(initialHours) }
     var selectedMinutes by remember { mutableIntStateOf(initialMinutes) }
     var selectedSeconds by remember { mutableIntStateOf(initialSeconds) }
+    var selectedMillis by remember { mutableIntStateOf(initialMillis) }
 
     // Диалог с заголовком, контентом и кнопками для подтверждения или отмены
     AlertDialog(
@@ -35,16 +37,18 @@ fun TimePickerDialog(
                 initialHours = selectedHours,
                 initialMinutes = selectedMinutes,
                 initialSeconds = selectedSeconds,
-                onTimeSelected = { hours, minutes, seconds ->
+                initialMillis = selectedMillis,
+                onTimeSelected = { hours, minutes, seconds, millis ->
                     selectedHours = hours
                     selectedMinutes = minutes
                     selectedSeconds = seconds
+                    selectedMillis = millis
                 }
             )
         },
         confirmButton = {
             Button(onClick = {
-                onTimeConfirm(selectedHours, selectedMinutes, selectedSeconds)
+                onTimeConfirm(selectedHours, selectedMinutes, selectedSeconds, selectedMillis)
             }) {
                 Text(stringResource(R.string.ok))
             }

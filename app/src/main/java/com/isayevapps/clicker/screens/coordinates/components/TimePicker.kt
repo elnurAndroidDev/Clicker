@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -33,16 +34,32 @@ fun TimeWheelPicker(
     initialHours: Int = 0,
     initialMinutes: Int = 0,
     initialSeconds: Int = 0,
-    onTimeSelected: (hours: Int, minutes: Int, seconds: Int) -> Unit
+    initialMillis: Int = 0,
+    onTimeSelected: (hours: Int, minutes: Int, seconds: Int, millis: Int) -> Unit
 ) {
     // Локальные состояния для выбранных значений
     var selectedHours by remember { mutableIntStateOf(initialHours) }
     var selectedMinutes by remember { mutableIntStateOf(initialMinutes) }
     var selectedSeconds by remember { mutableIntStateOf(initialSeconds) }
+    var selectedMillis1 by remember { mutableIntStateOf(initialMillis / 100) }
+    var selectedMillis2 by remember { mutableIntStateOf(initialMillis % 100 / 10) }
+    var selectedMillis3 by remember { mutableIntStateOf(initialMillis % 10) }
 
     // Перерисовывать родительский экран, когда выбирается новое значение
-    LaunchedEffect(selectedHours, selectedMinutes, selectedSeconds) {
-        onTimeSelected(selectedHours, selectedMinutes, selectedSeconds)
+    LaunchedEffect(
+        selectedHours,
+        selectedMinutes,
+        selectedSeconds,
+        selectedMillis1,
+        selectedMillis2,
+        selectedMillis3
+    ) {
+        onTimeSelected(
+            selectedHours,
+            selectedMinutes,
+            selectedSeconds,
+            selectedMillis1 * 100 + selectedMillis2 * 10 + selectedMillis3
+        )
     }
 
     // В три столбца размещаем три колёсика
@@ -72,6 +89,27 @@ fun TimeWheelPicker(
             selectedIndex = selectedSeconds,
             onItemSelected = { selectedSeconds = it },
             modifier = Modifier.weight(1f)
+        )
+
+        Spacer(modifier = Modifier.weight(0.1f))
+
+        WheelPicker(
+            items = (0..9).map { it.toString() },
+            selectedIndex = selectedMillis1,
+            onItemSelected = { selectedMillis1 = it },
+            modifier = Modifier.weight(0.7f)
+        )
+        WheelPicker(
+            items = (0..9).map { it.toString() },
+            selectedIndex = selectedMillis2,
+            onItemSelected = { selectedMillis2 = it },
+            modifier = Modifier.weight(0.7f)
+        )
+        WheelPicker(
+            items = (0..9).map { it.toString() },
+            selectedIndex = selectedMillis3,
+            onItemSelected = { selectedMillis3 = it },
+            modifier = Modifier.weight(0.7f)
         )
     }
 }
@@ -142,5 +180,5 @@ fun WheelPicker(
 @Preview(showBackground = true, showSystemUi = true, backgroundColor = 0xFF3F51B5)
 @Composable
 private fun Time() {
-    TimeWheelPicker { hours, minutes, seconds ->  }
+    TimeWheelPicker { hours, minutes, seconds, millis-> }
 }

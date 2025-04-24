@@ -46,18 +46,19 @@ import com.isayevapps.clicker.utils.timeIntToStr
 @Composable
 fun AddCoordinatesScreen(
     viewModel: AddCoordinateViewModel,
-    navController: NavController,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     if (uiState.showTimeDialog) {
+        val time = viewModel.initialTime
         TimePickerDialog(
-            initialHours = 0,
-            initialMinutes = 0,
-            initialSeconds = 0,
-            onTimeConfirm = { hours, minutes, seconds ->
-                viewModel.onTimeChange(hours, minutes, seconds)
+            initialHours = time / 3600000,
+            initialMinutes = (time % 3600000) / 60000,
+            initialSeconds = (time % 60000) / 1000,
+            initialMillis = time % 1000,
+            onTimeConfirm = { hours, minutes, seconds, millis ->
+                viewModel.onTimeChange(hours, minutes, seconds, millis)
                 viewModel.hideTimeDialog()
             },
             onDismiss = {
@@ -96,8 +97,9 @@ fun AddCoordinatesScreen(
     AddCoordinatesContent(
         modifier = modifier,
         uiState = uiState,
-        onTimeClick = {
-            viewModel.idInTimeAndClicksList = it
+        onTimeClick = { id, time ->
+            viewModel.idInTimeAndClicksList = id
+            viewModel.initialTime = time
             viewModel.showTimeDialog()
         },
         onClicksCountPlus = viewModel::onClicksCountPlus,
@@ -121,7 +123,7 @@ fun AddCoordinatesScreen(
 @Composable
 fun AddCoordinatesContent(
     uiState: AddCoordinateUiState,
-    onTimeClick: (Int) -> Unit = {},
+    onTimeClick: (Int, Int) -> Unit = { _, _ -> },
     onKeyDownTimeChange: (Int, String) -> Unit = { _, _ -> },
     onIntervalChange: (Int, String) -> Unit = { _, _ -> },
     onStepChange: (Int) -> Unit = {},
@@ -153,7 +155,7 @@ fun AddCoordinatesContent(
                         index = coordinates[it].index,
                         time = timeIntToStr(coordinates[it].time),
                         clicksCount = coordinates[it].clicksCount,
-                        onTimeClick = { onTimeClick(it) },
+                        onTimeClick = { onTimeClick(it, coordinates[it].time) },
                         onClicksCountPlus = { onClicksCountPlus(it) },
                         onClicksCountMinus = { onClicksCountMinus(it) },
                         onKeyDownTimeChange = { s -> onKeyDownTimeChange(it, s) },

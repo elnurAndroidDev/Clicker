@@ -36,6 +36,7 @@ class AddCoordinateViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
     private lateinit var device: DeviceEntity
     var idInTimeAndClicksList = 0
+    var initialTime = 0
 
     init {
         viewModelScope.launch {
@@ -55,7 +56,7 @@ class AddCoordinateViewModel @Inject constructor(
                 break
             index++
         }
-        val time = "00:00:00"
+        val time = "00:00:00.000"
         val x = _uiState.value.x
         val y = _uiState.value.y
         val t = 100
@@ -86,16 +87,17 @@ class AddCoordinateViewModel @Inject constructor(
 
     suspend fun send(coordinate: Coordinate) {
         val url = "http://${device.name}.local/api"
-        val h = coordinate.time / 3600
-        val m = (coordinate.time % 3600) / 60
-        val s = coordinate.time % 60
+        val h = coordinate.time / 3600000
+        val m = (coordinate.time % 3600000) / 60000
+        val s = (coordinate.time % 60000) / 1000
+        val ms = coordinate.time % 1000
         val index = coordinate.index
         val x = coordinate.x
         val y = coordinate.y
         val t = coordinate.keyDownTime
         val i = coordinate.intervalTime
         val n = coordinate.clicksCount
-        val request = Dot(index, x, y, t, i, h, m, s, n)
+        val request = Dot(index, x, y, t, i, h, m, s, ms, n)
         val result = withContext(Dispatchers.IO) { safeApiCall { apiService.dot(url, request) } }
         when (result) {
             is Result.Success -> {
@@ -146,9 +148,9 @@ class AddCoordinateViewModel @Inject constructor(
     }
 
     @SuppressLint("DefaultLocale")
-    fun onTimeChange(h: Int, m: Int, s: Int) = viewModelScope.launch {
+    fun onTimeChange(h: Int, m: Int, s: Int, ms: Int) = viewModelScope.launch {
         val coordinate = _uiState.value.coordinates[idInTimeAndClicksList]
-        send(coordinate.copy(time = h * 3600 + m * 60 + s))
+        send(coordinate.copy(time = h * 3600000 + m * 60000 + s * 1000 + ms))
     }
 
     fun onKeyDownTimeChange(id: Int, keyDownTime: String) = viewModelScope.launch {

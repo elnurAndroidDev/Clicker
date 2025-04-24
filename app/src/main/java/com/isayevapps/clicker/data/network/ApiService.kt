@@ -18,6 +18,7 @@ data class Dot(
     val h: Int,
     val m: Int,
     val s: Int,
+    val ms: Int,
     val n: Int,
     val c: Int = 2
 )

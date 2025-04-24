@@ -36,7 +36,7 @@ data class TimeAndClicksUiState(
     val id: Int = 0,
     val index: Int = 0,
     val clicksCount: Int = 1,
-    val time: String = "00:00:00",
+    val time: String = "00:00:00.000",
     val keyDownTime: Int = 100,
     val intervalTime: Int = 100,
     val onKeyDownTimeChange: (String) -> Unit = {},
