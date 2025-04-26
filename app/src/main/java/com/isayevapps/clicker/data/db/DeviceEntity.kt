@@ -9,9 +9,10 @@ import com.isayevapps.clicker.screens.device.Device
 data class DeviceEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
-    val name: String
+    val name: String,
+    val ip: String,
 ) {
     fun toDevice(): Device {
-        return Device(id, name)
+        return Device(id, name, ip)
     }
 }

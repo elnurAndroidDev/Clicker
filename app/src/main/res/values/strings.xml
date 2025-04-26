@@ -34,4 +34,6 @@
     <string name="dots">Точки</string>
     <string name="invalid_character">Недопустимый символ</string>
     <string name="interval">Интервал</string>
+    <string name="device_not_found">Устройство не найдено</string>
+    <string name="no_wifi_connection">Пожалуйста, подключитесь к Wi-Fi</string>
 </resources>

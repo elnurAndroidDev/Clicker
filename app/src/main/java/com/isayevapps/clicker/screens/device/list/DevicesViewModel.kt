@@ -9,6 +9,8 @@ import com.isayevapps.clicker.data.network.DeleteAll
 import com.isayevapps.clicker.data.network.Result
 import com.isayevapps.clicker.data.network.safeApiCall
 import com.isayevapps.clicker.screens.coordinates.Coordinate
+import com.isayevapps.clicker.utils.NetworkScanner
+import com.isayevapps.clicker.utils.NoWifiException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +23,8 @@ import javax.inject.Inject
 class DevicesViewModel @Inject constructor(
     private val apiService: ApiService,
     private val deviceDao: DeviceDao,
-    private val coordinateDao: CoordinatesDao
+    private val coordinateDao: CoordinatesDao,
+    private val networkScanner: NetworkScanner
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DeviceListUiState())
     val uiState = _uiState.asStateFlow()
@@ -29,13 +32,6 @@ class DevicesViewModel @Inject constructor(
     init {
         loadDevices()
     }
-
-    fun getCoordinate(deviceId: Int, callback: (List<Coordinate>) -> Unit) =
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            val coordinates = coordinateDao.getAllByDeviceId(deviceId).map { it.toCoordinate() }
-            callback(coordinates)
-        }
 
     private fun loadDevices() {
         viewModelScope.launch {
@@ -49,8 +45,30 @@ class DevicesViewModel @Inject constructor(
 
     fun deleteDevice(deviceId: Int) {
         viewModelScope.launch {
-            val device = deviceDao.getById(deviceId)
-            val url = "http://${device.name}.local/api"
+            var device = deviceDao.getById(deviceId)
+            var isIPActual = false
+            try {
+                isIPActual = networkScanner.checkHost(device.ip, device.name)
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            } catch (e: NoWifiException) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                return@launch
+            }
+            if (!isIPActual) {
+                var ip: String? = null
+                try {
+                    ip = networkScanner.findFirstHost(device.name)
+                } catch (e: Exception) {
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                    return@launch
+                }
+                if (ip == null) {
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = "Device not found")
+                    return@launch
+                }
+                device = device.copy(ip = ip)
+            }
+            val url = "http://${device.ip}/api"
             val request = DeleteAll()
             _uiState.value = _uiState.value.copy(isLoading = true)
             val result =

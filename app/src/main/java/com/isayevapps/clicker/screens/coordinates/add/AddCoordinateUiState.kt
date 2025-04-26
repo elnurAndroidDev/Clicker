@@ -10,5 +10,6 @@ data class AddCoordinateUiState(
     val step: Int = 10,
     val error: String? = null,
     val showDeleteDialog: Boolean = false,
-    val showTimeDialog: Boolean = false
+    val showTimeDialog: Boolean = false,
+    val isLoading: Boolean = false
 )

@@ -1,13 +1,13 @@
 package com.isayevapps.clicker.screens.device.add
 
+import com.isayevapps.clicker.utils.NetworkScanner
 import android.content.Context
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.isayevapps.clicker.R
 import com.isayevapps.clicker.data.db.DeviceDao
 import com.isayevapps.clicker.data.db.DeviceEntity
-import com.isayevapps.clicker.data.network.ApiService
-import com.isayevapps.clicker.data.network.Login
 import com.isayevapps.clicker.data.network.Result
 import com.isayevapps.clicker.data.network.safeApiCall
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,14 +22,14 @@ import javax.inject.Inject
 @HiltViewModel
 class AddDeviceViewModel @Inject constructor(
     private val deviceDao: DeviceDao,
-    private val apiService: ApiService,
+    private val networkScanner: NetworkScanner,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
     private var _uiState = MutableStateFlow(AddDeviceUiState())
     val uiState = _uiState.asStateFlow()
 
-    fun onDeviceNameChange(deviceName: String) {
-        val invalidChar = findInvalidUrlChar(deviceName)
+    fun onDeviceNameChange(deviceName: TextFieldValue) {
+        val invalidChar = findInvalidUrlChar(deviceName.text)
         if (invalidChar != null)
             _uiState.value =
                 _uiState.value.copy(invalidUrlErrorText = "${context.getString(R.string.invalid_character)}: \"$invalidChar\"")
@@ -38,31 +38,26 @@ class AddDeviceViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(deviceName = deviceName)
     }
 
-    fun addEnabled() = _uiState.value.deviceName.isNotBlank()
+    fun addEnabled() = _uiState.value.deviceName.text.isNotBlank()
             && _uiState.value.invalidUrlErrorText == null
 
-    fun addDevice(navigateBack: () -> Unit) {
-        viewModelScope.launch {
-            val url = "http://${_uiState.value.deviceName}.local/api"
-            val request = Login()
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            val result =
-                withContext(Dispatchers.IO) { safeApiCall { apiService.login(url, request) } }
-            when (result) {
-                is Result.Success -> {
-                    withContext(Dispatchers.IO) {
-                    deviceDao.insert(DeviceEntity(name = _uiState.value.deviceName))
-                        }
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                    navigateBack()
-                }
-
-                is Result.Error -> {
-                    _uiState.value =
-                        _uiState.value.copy(isLoading = false, error = result.exception.message)
-                }
-            }
+    fun addDevice(navigateBack: () -> Unit) = viewModelScope.launch {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        var ip: String? = null
+        try {
+            ip = networkScanner.findFirstHost(_uiState.value.deviceName.text)
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+            return@launch
         }
+        if (ip == null) {
+            _uiState.value = _uiState.value.copy(isLoading = false, error = "Device not found")
+            return@launch
+        }
+        withContext(Dispatchers.IO) {
+            deviceDao.insert(DeviceEntity(name = _uiState.value.deviceName.text, ip = ip))
+        }
+        navigateBack()
     }
 
     fun hideErrorDialog() {

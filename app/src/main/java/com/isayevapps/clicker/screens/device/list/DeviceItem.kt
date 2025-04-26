@@ -1,6 +1,7 @@
 package com.isayevapps.clicker.screens.device.list
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -38,14 +39,21 @@ fun DeviceItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = device.name,
-                fontSize = 20.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(0.7f),
-                fontWeight = FontWeight.Bold
-            )
+            Column(modifier = Modifier.fillMaxWidth(0.7f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = device.name,
+                    fontSize = 20.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = device.ip,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
             IconButton(
                 onClick = { onDeleteClick(device.id) }
@@ -60,7 +68,7 @@ fun DeviceItem(
 @Composable
 private fun DeviceItemPreview() {
     DeviceItem(
-        device = Device(0,"Device"),
+        device = Device(0, "Device", "192.168.0.1"),
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)

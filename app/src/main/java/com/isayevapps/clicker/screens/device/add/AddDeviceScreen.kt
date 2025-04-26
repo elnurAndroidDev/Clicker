@@ -44,6 +44,7 @@ fun AddDeviceContent(
 ) {
     if (uiState.error != null)
         ErrorDialog(errorText = uiState.error.toString(), onDismiss = viewmodel::hideErrorDialog)
+
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AppTextField(
             value = uiState.deviceName,

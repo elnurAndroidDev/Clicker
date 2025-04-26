@@ -12,6 +12,10 @@ fun ErrorDialog(errorText: String, onDismiss: () -> Unit) {
     var _errorText = errorText
     if (errorText.startsWith("Network"))
         _errorText = stringResource(R.string.connection_error)
+    else if (errorText == "Device not found")
+        _errorText = stringResource(R.string.device_not_found)
+    else if (errorText == "No wifi connection")
+        _errorText = stringResource(R.string.no_wifi_connection)
     AlertDialog(
         onDismissRequest = {
             onDismiss()

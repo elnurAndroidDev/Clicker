@@ -32,12 +32,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.isayevapps.clicker.R
 import com.isayevapps.clicker.screens.common.ErrorDialog
+import com.isayevapps.clicker.screens.common.LoadingScreen
 import com.isayevapps.clicker.screens.common.TimeAndClicksItem
 import com.isayevapps.clicker.screens.common.TimeAndClicksUiState
 import com.isayevapps.clicker.screens.coordinates.components.TimePickerDialog
@@ -46,6 +48,7 @@ import com.isayevapps.clicker.utils.timeIntToStr
 @Composable
 fun AddCoordinatesScreen(
     viewModel: AddCoordinateViewModel,
+    navController: NavController,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -91,32 +94,46 @@ fun AddCoordinatesScreen(
             }
         )
     }
-    if (uiState.error != null)
-        ErrorDialog(uiState.error.toString(), viewModel::hideErrorDialog)
 
-    AddCoordinatesContent(
-        modifier = modifier,
-        uiState = uiState,
-        onTimeClick = { id, time ->
-            viewModel.idInTimeAndClicksList = id
-            viewModel.initialTime = time
-            viewModel.showTimeDialog()
-        },
-        onClicksCountPlus = viewModel::onClicksCountPlus,
-        onClicksCountMinus = viewModel::onClicksCountMinus,
-        onKeyDownTimeChange = viewModel::onKeyDownTimeChange,
-        onIntervalChange = viewModel::onIntervalChange,
-        onStepChange = viewModel::onStepChange,
-        onDecreaseX = viewModel::decreaseX,
-        onIncreaseX = viewModel::increaseX,
-        onDecreaseY = viewModel::decreaseY,
-        onIncreaseY = viewModel::increaseY,
-        onAddClick = viewModel::add,
-        onDeleteClick = {
-            viewModel.idInTimeAndClicksList = it
-            viewModel.showDeleteDialog()
+    when {
+        uiState.isLoading -> LoadingScreen()
+        uiState.error != null -> {
+            val onDismiss: () -> Unit =
+                if (uiState.error == "No Wi-Fi connection" || uiState.error == "Device not found")
+                    navController::navigateUp
+                else viewModel::hideErrorDialog
+
+            ErrorDialog(
+                uiState.error.toString(),
+                onDismiss = onDismiss
+            )
         }
-    )
+
+        else ->
+            AddCoordinatesContent(
+                modifier = modifier,
+                uiState = uiState,
+                onTimeClick = { id, time ->
+                    viewModel.idInTimeAndClicksList = id
+                    viewModel.initialTime = time
+                    viewModel.showTimeDialog()
+                },
+                onClicksCountPlus = viewModel::onClicksCountPlus,
+                onClicksCountMinus = viewModel::onClicksCountMinus,
+                onKeyDownTimeChange = viewModel::onKeyDownTimeChange,
+                onIntervalChange = viewModel::onIntervalChange,
+                onStepChange = viewModel::onStepChange,
+                onDecreaseX = viewModel::decreaseX,
+                onIncreaseX = viewModel::increaseX,
+                onDecreaseY = viewModel::decreaseY,
+                onIncreaseY = viewModel::increaseY,
+                onAddClick = viewModel::add,
+                onDeleteClick = {
+                    viewModel.idInTimeAndClicksList = it
+                    viewModel.showDeleteDialog()
+                }
+            )
+    }
 
 }
 
@@ -124,8 +141,8 @@ fun AddCoordinatesScreen(
 fun AddCoordinatesContent(
     uiState: AddCoordinateUiState,
     onTimeClick: (Int, Int) -> Unit = { _, _ -> },
-    onKeyDownTimeChange: (Int, String) -> Unit = { _, _ -> },
-    onIntervalChange: (Int, String) -> Unit = { _, _ -> },
+    onKeyDownTimeChange: (Int, TextFieldValue) -> Unit = { _, _ -> },
+    onIntervalChange: (Int, TextFieldValue) -> Unit = { _, _ -> },
     onStepChange: (Int) -> Unit = {},
     onClicksCountPlus: (Int) -> Unit = {},
     onClicksCountMinus: (Int) -> Unit = {},
@@ -155,6 +172,8 @@ fun AddCoordinatesContent(
                         index = coordinates[it].index,
                         time = timeIntToStr(coordinates[it].time),
                         clicksCount = coordinates[it].clicksCount,
+                        keyDownTime = coordinates[it].keyDownTime,
+                        intervalTime = coordinates[it].intervalTime,
                         onTimeClick = { onTimeClick(it, coordinates[it].time) },
                         onClicksCountPlus = { onClicksCountPlus(it) },
                         onClicksCountMinus = { onClicksCountMinus(it) },

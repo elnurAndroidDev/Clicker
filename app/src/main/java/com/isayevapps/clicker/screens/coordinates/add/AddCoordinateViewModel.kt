@@ -1,6 +1,8 @@
 package com.isayevapps.clicker.screens.coordinates.add
 
 import android.annotation.SuppressLint
+import android.util.Log
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,6 +16,9 @@ import com.isayevapps.clicker.data.network.Move
 import com.isayevapps.clicker.data.network.Result
 import com.isayevapps.clicker.data.network.safeApiCall
 import com.isayevapps.clicker.screens.coordinates.Coordinate
+import com.isayevapps.clicker.screens.device.Device
+import com.isayevapps.clicker.utils.NetworkScanner
+import com.isayevapps.clicker.utils.NoWifiException
 import com.isayevapps.clicker.utils.timeStrToInt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -28,22 +33,46 @@ class AddCoordinateViewModel @Inject constructor(
     private val apiService: ApiService,
     private val deviceDao: DeviceDao,
     private val coordinatesDao: CoordinatesDao,
+    private val networkScanner: NetworkScanner,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val deviceId = savedStateHandle.get<Int>("deviceId") ?: 0
     private val _uiState = MutableStateFlow(AddCoordinateUiState(deviceId = deviceId))
     val uiState = _uiState.asStateFlow()
-    private lateinit var device: DeviceEntity
+    private lateinit var device: Device
     var idInTimeAndClicksList = 0
     var initialTime = 0
 
     init {
         viewModelScope.launch {
-            device = deviceDao.getById(deviceId)
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            device = deviceDao.getById(deviceId).toDevice()
+            var isIPActual = false
+            try {
+                isIPActual = networkScanner.checkHost(device.ip, device.name)
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            } catch (e: NoWifiException) {
+                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                return@launch
+            }
+            if (!isIPActual) {
+                var ip: String? = null
+                try {
+                    ip = networkScanner.findFirstHost(device.name)
+                } catch (e: Exception) {
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                    return@launch
+                }
+                if (ip == null) {
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = "Device not found")
+                    return@launch
+                }
+                device = device.copy(ip = ip)
+                deviceDao.update(device.toDeviceEntity())
+            }
             coordinatesDao.getAllByDeviceIdFlow(deviceId).collect { coordinates ->
-                _uiState.value =
-                    _uiState.value.copy(coordinates = coordinates.map { it.toCoordinate() })
+                _uiState.value = _uiState.value.copy(coordinates = coordinates.map { it.toCoordinate() })
             }
         }
     }
@@ -68,7 +97,7 @@ class AddCoordinateViewModel @Inject constructor(
 
     fun delete() = viewModelScope.launch {
         val coordinate = _uiState.value.coordinates[idInTimeAndClicksList]
-        val url = "http://${device.name}.local/api"
+        val url = "http://${device.ip}/api"
         val request = DeleteDot(coordinate.index)
         val result =
             withContext(Dispatchers.IO) { safeApiCall { apiService.deleteDot(url, request) } }
@@ -86,7 +115,7 @@ class AddCoordinateViewModel @Inject constructor(
     }
 
     suspend fun send(coordinate: Coordinate) {
-        val url = "http://${device.name}.local/api"
+        val url = "http://${device.ip}/api"
         val h = coordinate.time / 3600000
         val m = (coordinate.time % 3600000) / 60000
         val s = (coordinate.time % 60000) / 1000
@@ -113,7 +142,7 @@ class AddCoordinateViewModel @Inject constructor(
     }
 
     private suspend fun moveApiCall(x: Int, y: Int) {
-        val url = "http://${device.name}.local/api"
+        val url = "http://${device.ip}/api"
         val request = Move(x, y)
         val result = withContext(Dispatchers.IO) { safeApiCall { apiService.move(url, request) } }
         when (result) {
@@ -153,15 +182,16 @@ class AddCoordinateViewModel @Inject constructor(
         send(coordinate.copy(time = h * 3600000 + m * 60000 + s * 1000 + ms))
     }
 
-    fun onKeyDownTimeChange(id: Int, keyDownTime: String) = viewModelScope.launch {
+    fun onKeyDownTimeChange(id: Int, keyDownTime: TextFieldValue) = viewModelScope.launch {
+        Log.d("TAG", "onKeyDownTimeChange: $id $keyDownTime")
         val coordinate = _uiState.value.coordinates[id]
-        if (keyDownTime.isBlank()) {
+        if (keyDownTime.text.isBlank()) {
             send(coordinate.copy(keyDownTime = 0))
             return@launch
         }
-        if (keyDownTime.all { it.isDigit() }) {
+        if (keyDownTime.text.all { it.isDigit() }) {
             val keyDownTimeUShort = try {
-                keyDownTime.toUShort()
+                keyDownTime.text.toUShort()
             } catch (e: NumberFormatException) {
                 UShort.MAX_VALUE
             }
@@ -169,15 +199,15 @@ class AddCoordinateViewModel @Inject constructor(
         }
     }
 
-    fun onIntervalChange(id: Int, interval: String) = viewModelScope.launch {
+    fun onIntervalChange(id: Int, interval: TextFieldValue) = viewModelScope.launch {
         val coordinate = _uiState.value.coordinates[id]
-        if (interval.isBlank()) {
+        if (interval.text.isBlank()) {
             send(coordinate.copy(intervalTime = 0))
             return@launch
         }
-        if (interval.all { it.isDigit() }) {
+        if (interval.text.all { it.isDigit() }) {
             val intervalUShort = try {
-                interval.toUShort()
+                interval.text.toUShort()
             } catch (e: NumberFormatException) {
                 UShort.MAX_VALUE
             }

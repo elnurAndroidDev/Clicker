@@ -25,7 +25,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,8 +41,8 @@ data class TimeAndClicksUiState(
     val time: String = "00:00:00.000",
     val keyDownTime: Int = 100,
     val intervalTime: Int = 100,
-    val onKeyDownTimeChange: (String) -> Unit = {},
-    val onIntervalChange: (String) -> Unit = {},
+    val onKeyDownTimeChange: (TextFieldValue) -> Unit = {},
+    val onIntervalChange: (TextFieldValue) -> Unit = {},
     val onTimeClick: () -> Unit = {},
     val onClicksCountPlus: () -> Unit = {},
     val onClicksCountMinus: () -> Unit = {},
@@ -109,7 +111,10 @@ fun TimeAndClicksItem(
             }
             Row {
                 AppTextField(
-                    value = state.keyDownTime.toString(),
+                    value = TextFieldValue(
+                        state.keyDownTime.toString(),
+                        TextRange(state.keyDownTime.toString().length)
+                    ),
                     onValueChange = state.onKeyDownTimeChange,
                     label = stringResource(R.string.key_down_time),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -119,7 +124,10 @@ fun TimeAndClicksItem(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 AppTextField(
-                    value = state.intervalTime.toString(),
+                    value = TextFieldValue(
+                        state.intervalTime.toString(),
+                        TextRange(state.intervalTime.toString().length)
+                    ),
                     onValueChange = state.onIntervalChange,
                     label = stringResource(R.string.interval),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

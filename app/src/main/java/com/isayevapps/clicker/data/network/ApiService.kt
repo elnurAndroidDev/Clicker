@@ -1,6 +1,7 @@
 package com.isayevapps.clicker.data.network
 
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Url
 
@@ -43,11 +44,10 @@ data class Response(
 )
 
 interface ApiService {
-    @POST
+    @GET
     suspend fun login(
-        @Url url: String,
-        @Body body: Login
-    ): Response
+        @Url url: String
+    ): String
 
     @POST
     suspend fun dot(
