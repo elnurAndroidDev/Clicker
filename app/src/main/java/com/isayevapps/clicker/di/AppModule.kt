@@ -52,7 +52,7 @@ object AppModule {
             // пробуем коннект максимум 200 мс
             .connectTimeout(300, TimeUnit.MILLISECONDS)
             // ждём ответа от сервера не более 500 мс
-            .readTimeout(500, TimeUnit.MILLISECONDS)
+            .readTimeout(1000, TimeUnit.MILLISECONDS)
             // для GET-запросов тело почти пустое, но пусть тоже 500 мс
             .writeTimeout(500, TimeUnit.MILLISECONDS)
             // весь цикл запроса+ответа не более 800 мс

@@ -5,8 +5,8 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
 import com.isayevapps.clicker.data.network.ApiService
-import com.isayevapps.clicker.data.network.Login
 import com.isayevapps.clicker.data.network.Result
+import com.isayevapps.clicker.data.network.retrySafeApiCall
 import com.isayevapps.clicker.data.network.safeApiCall
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -37,11 +37,16 @@ class NetworkScanner @Inject constructor(
     }
 
 
-    suspend fun checkHost(ip: String, deviceName: String): Boolean {
+    suspend fun checkHost(ip: String, deviceName: String, withRetry: Boolean = false): Boolean {
         ensureWifi()
         val url = "http://$ip/$deviceName"
         Log.d("checkHost", url)
-        val response = withContext(Dispatchers.IO) { safeApiCall { apiService.login(url) } }
+        val response = withContext(Dispatchers.IO) {
+            if (withRetry)
+                retrySafeApiCall { apiService.login(url) }
+            else
+                safeApiCall { apiService.login(url) }
+        }
         Log.d("checkHost", response.toString())
         return when (response) {
             is Result.Success -> true

@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -98,9 +99,9 @@ fun TimeAndClicksItem(
                     ) {
                         Text("—")
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(text = "${state.clicksCount}", fontSize = 16.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Button(
                         enabled = state.clicksCount < 255,
                         onClick = state.onClicksCountPlus
@@ -139,7 +140,7 @@ fun TimeAndClicksItem(
         }
         IconButton(
             onClick = state.onDeleteClick,
-            modifier = Modifier.padding(start = 10.dp)
+            modifier = Modifier.padding(start = 4.dp)
         ) {
             Icon(
                 Icons.Filled.Delete,
@@ -150,8 +151,8 @@ fun TimeAndClicksItem(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun TimeAndClicksItemPreview() {
-    TimeAndClicksItem(state = TimeAndClicksUiState())
+    TimeAndClicksItem(state = TimeAndClicksUiState(clicksCount = 10), modifier = Modifier.padding(16.dp))
 }

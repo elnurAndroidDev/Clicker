@@ -8,8 +8,6 @@ import androidx.lifecycle.viewModelScope
 import com.isayevapps.clicker.R
 import com.isayevapps.clicker.data.db.DeviceDao
 import com.isayevapps.clicker.data.db.DeviceEntity
-import com.isayevapps.clicker.data.network.Result
-import com.isayevapps.clicker.data.network.safeApiCall
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

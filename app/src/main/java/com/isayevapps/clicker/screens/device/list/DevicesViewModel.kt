@@ -7,8 +7,7 @@ import com.isayevapps.clicker.data.db.DeviceDao
 import com.isayevapps.clicker.data.network.ApiService
 import com.isayevapps.clicker.data.network.DeleteAll
 import com.isayevapps.clicker.data.network.Result
-import com.isayevapps.clicker.data.network.safeApiCall
-import com.isayevapps.clicker.screens.coordinates.Coordinate
+import com.isayevapps.clicker.data.network.retrySafeApiCall
 import com.isayevapps.clicker.utils.NetworkScanner
 import com.isayevapps.clicker.utils.NoWifiException
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -72,7 +71,7 @@ class DevicesViewModel @Inject constructor(
             val request = DeleteAll()
             _uiState.value = _uiState.value.copy(isLoading = true)
             val result =
-                withContext(Dispatchers.IO) { safeApiCall { apiService.deleteAll(url, request) } }
+                withContext(Dispatchers.IO) { retrySafeApiCall { apiService.deleteAll(url, request) } }
             when (result) {
                 is Result.Success -> {
                     withContext(Dispatchers.IO) {
