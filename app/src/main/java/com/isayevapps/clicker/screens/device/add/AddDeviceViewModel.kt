@@ -26,20 +26,29 @@ class AddDeviceViewModel @Inject constructor(
     private var _uiState = MutableStateFlow(AddDeviceUiState())
     val uiState = _uiState.asStateFlow()
 
-    fun onDeviceNameChange(deviceName: TextFieldValue) {
-        val invalidChar = findInvalidUrlChar(deviceName.text)
-        if (invalidChar != null)
-            _uiState.value =
-                _uiState.value.copy(invalidUrlErrorText = "${context.getString(R.string.invalid_character)}: \"$invalidChar\"")
-        else
-            _uiState.value = _uiState.value.copy(invalidUrlErrorText = null)
-        _uiState.value = _uiState.value.copy(deviceName = deviceName)
+    fun onEvent(event: AddDeviceEvent) {
+        when (event) {
+            is AddDeviceEvent.OnDeviceNameChange -> onDeviceNameChange(event.deviceName)
+            is AddDeviceEvent.AddDevice -> addDevice(event.onSuccess)
+            is AddDeviceEvent.HideErrorDialog -> hideErrorDialog()
+        }
     }
 
-    fun addEnabled() = _uiState.value.deviceName.text.isNotBlank()
+    private fun onDeviceNameChange(deviceName: TextFieldValue) {
+        val invalidChar = findInvalidUrlChar(deviceName.text)
+        val invalidCharText =
+            invalidChar?.let { "${context.getString(R.string.invalid_character)}: \"$invalidChar\"" }
+        _uiState.value = _uiState.value.copy(
+            deviceName = deviceName,
+            invalidUrlErrorText = invalidCharText,
+            isAddEnabled = isAddEnabled()
+        )
+    }
+
+    private fun isAddEnabled() = _uiState.value.deviceName.text.isNotBlank()
             && _uiState.value.invalidUrlErrorText == null
 
-    fun addDevice(navigateBack: () -> Unit) = viewModelScope.launch {
+    private fun addDevice(navigateBack: () -> Unit) = viewModelScope.launch {
         _uiState.value = _uiState.value.copy(isLoading = true)
         var ip: String? = null
         try {
@@ -58,7 +67,7 @@ class AddDeviceViewModel @Inject constructor(
         navigateBack()
     }
 
-    fun hideErrorDialog() {
+    private fun hideErrorDialog() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 

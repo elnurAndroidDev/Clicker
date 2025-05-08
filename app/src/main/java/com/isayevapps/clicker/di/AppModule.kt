@@ -57,7 +57,7 @@ object AppModule {
             .writeTimeout(500, TimeUnit.MILLISECONDS)
             // весь цикл запроса+ответа не более 800 мс
             .callTimeout(1000, TimeUnit.MILLISECONDS)
-            .addInterceptor(LoggingInterceptor())
+            //.addInterceptor(LoggingInterceptor())
             .build()
 
         return Retrofit.Builder()

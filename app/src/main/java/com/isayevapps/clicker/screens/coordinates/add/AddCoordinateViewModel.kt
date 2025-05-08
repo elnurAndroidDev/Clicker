@@ -78,7 +78,29 @@ class AddCoordinateViewModel @Inject constructor(
         }
     }
 
-    fun add() = viewModelScope.launch {
+    fun onEvent(event: AddCoordinateEvent) {
+        when (event) {
+            is AddCoordinateEvent.OnAddClick -> add()
+            is AddCoordinateEvent.OnDeleteClick -> onDeleteClick(event.id)
+            is AddCoordinateEvent.OnDecreaseX -> decreaseX()
+            is AddCoordinateEvent.OnDecreaseY -> decreaseY()
+            is AddCoordinateEvent.OnIncreaseX -> increaseX()
+            is AddCoordinateEvent.OnIncreaseY -> increaseY()
+            is AddCoordinateEvent.OnKeyDownTimeChange -> onKeyDownTimeChange(event.id, event.time)
+            is AddCoordinateEvent.OnIntervalChange -> onIntervalChange(event.id, event.time)
+            is AddCoordinateEvent.OnClicksCountMinus -> onClicksCountMinus(event.id)
+            is AddCoordinateEvent.OnClicksCountPlus -> onClicksCountPlus(event.id)
+            is AddCoordinateEvent.OnStepChange -> onStepChange(event.step)
+            is AddCoordinateEvent.OnTimeChange -> onTimeChange(event.hours, event.minutes, event.seconds, event.millis)
+            is AddCoordinateEvent.OnHideDeleteDialog -> hideDeleteDialog()
+            is AddCoordinateEvent.OnHideTimeDialog -> hideTimeDialog()
+            is AddCoordinateEvent.OnDelete -> delete()
+            is AddCoordinateEvent.OnHideErrorDialog -> hideErrorDialog()
+            is AddCoordinateEvent.OnTimeClick -> onTimeClick(event.id, event.time)
+        }
+    }
+
+    private fun add() = viewModelScope.launch {
         val coordinates = _uiState.value.coordinates
         var index = 0
         for (coordinate in coordinates) {
@@ -96,7 +118,18 @@ class AddCoordinateViewModel @Inject constructor(
         send(coordinate)
     }
 
-    fun delete() = viewModelScope.launch {
+    private fun onDeleteClick(id: Int) {
+        idInTimeAndClicksList = id
+        showDeleteDialog()
+    }
+
+    private fun onTimeClick(id: Int, time: Int) {
+        idInTimeAndClicksList = id
+        initialTime = time
+        showTimeDialog()
+    }
+
+    private fun delete() = viewModelScope.launch {
         val coordinate = _uiState.value.coordinates[idInTimeAndClicksList]
         val url = "http://${device.ip}/api"
         val request = DeleteDot(coordinate.index)
@@ -113,9 +146,10 @@ class AddCoordinateViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(error = result.exception.message)
             }
         }
+        hideDeleteDialog()
     }
 
-    suspend fun send(coordinate: Coordinate) {
+    private suspend fun send(coordinate: Coordinate) {
         val url = "http://${device.ip}/api"
         val h = coordinate.time / 3600000
         val m = (coordinate.time % 3600000) / 60000
@@ -159,34 +193,34 @@ class AddCoordinateViewModel @Inject constructor(
         }
     }
 
-    fun hideErrorDialog() {
+    private fun hideErrorDialog() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 
-    fun showTimeDialog() {
+    private fun showTimeDialog() {
         _uiState.value = _uiState.value.copy(showTimeDialog = true)
     }
 
-    fun hideTimeDialog() {
+    private fun hideTimeDialog() {
         _uiState.value = _uiState.value.copy(showTimeDialog = false)
     }
 
-    fun showDeleteDialog() {
+    private fun showDeleteDialog() {
         _uiState.value = _uiState.value.copy(showDeleteDialog = true)
     }
 
-    fun hideDeleteDialog() {
+    private fun hideDeleteDialog() {
         _uiState.value = _uiState.value.copy(showDeleteDialog = false)
     }
 
     @SuppressLint("DefaultLocale")
-    fun onTimeChange(h: Int, m: Int, s: Int, ms: Int) = viewModelScope.launch {
+    private fun onTimeChange(h: Int, m: Int, s: Int, ms: Int) = viewModelScope.launch {
         val coordinate = _uiState.value.coordinates[idInTimeAndClicksList]
         send(coordinate.copy(time = h * 3600000 + m * 60000 + s * 1000 + ms))
+        hideTimeDialog()
     }
 
-    fun onKeyDownTimeChange(id: Int, keyDownTime: TextFieldValue) = viewModelScope.launch {
-        Log.d("TAG", "onKeyDownTimeChange: $id $keyDownTime")
+    private fun onKeyDownTimeChange(id: Int, keyDownTime: TextFieldValue) = viewModelScope.launch {
         val coordinate = _uiState.value.coordinates[id]
         if (keyDownTime.text.isBlank()) {
             send(coordinate.copy(keyDownTime = 0))
@@ -202,7 +236,7 @@ class AddCoordinateViewModel @Inject constructor(
         }
     }
 
-    fun onIntervalChange(id: Int, interval: TextFieldValue) = viewModelScope.launch {
+    private fun onIntervalChange(id: Int, interval: TextFieldValue) = viewModelScope.launch {
         val coordinate = _uiState.value.coordinates[id]
         if (interval.text.isBlank()) {
             send(coordinate.copy(intervalTime = 0))
@@ -218,7 +252,7 @@ class AddCoordinateViewModel @Inject constructor(
         }
     }
 
-    fun increaseX() = viewModelScope.launch {
+    private fun increaseX() = viewModelScope.launch {
         val x = _uiState.value.x
         val step = _uiState.value.step
         if (x + step <= UShort.MAX_VALUE.toInt())
@@ -227,7 +261,7 @@ class AddCoordinateViewModel @Inject constructor(
             moveApiCall(0 + step, _uiState.value.y)
     }
 
-    fun decreaseX() = viewModelScope.launch {
+    private fun decreaseX() = viewModelScope.launch {
         val x = _uiState.value.x
         val step = _uiState.value.step
         if (x - step >= UShort.MIN_VALUE.toInt())
@@ -236,7 +270,7 @@ class AddCoordinateViewModel @Inject constructor(
             moveApiCall(UShort.MAX_VALUE.toInt() - step, _uiState.value.y)
     }
 
-    fun increaseY() = viewModelScope.launch {
+    private fun increaseY() = viewModelScope.launch {
         val y = _uiState.value.y
         val step = _uiState.value.step
         if (y + step <= UShort.MAX_VALUE.toInt())
@@ -245,7 +279,7 @@ class AddCoordinateViewModel @Inject constructor(
             moveApiCall(_uiState.value.x, 0 + step)
     }
 
-    fun decreaseY() = viewModelScope.launch {
+    private fun decreaseY() = viewModelScope.launch {
         val y = _uiState.value.y
         val step = _uiState.value.step
         if (y - step >= UShort.MIN_VALUE.toInt())
@@ -254,17 +288,17 @@ class AddCoordinateViewModel @Inject constructor(
             moveApiCall(_uiState.value.x, UShort.MAX_VALUE.toInt() - step)
     }
 
-    fun onStepChange(step: Int) {
+    private fun onStepChange(step: Int) {
         _uiState.value = _uiState.value.copy(step = step)
     }
 
-    fun onClicksCountPlus(id: Int) = viewModelScope.launch {
+    private fun onClicksCountPlus(id: Int) = viewModelScope.launch {
         val coordinate = _uiState.value.coordinates[id]
         if (coordinate.clicksCount < 255)
             send(coordinate.copy(clicksCount = coordinate.clicksCount + 1))
     }
 
-    fun onClicksCountMinus(id: Int) = viewModelScope.launch {
+    private fun onClicksCountMinus(id: Int) = viewModelScope.launch {
         val coordinate = _uiState.value.coordinates[id]
         if (coordinate.clicksCount > 1)
             send(coordinate.copy(clicksCount = coordinate.clicksCount - 1))

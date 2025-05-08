@@ -23,12 +23,14 @@ class NetworkScanner @Inject constructor(
 ) {
 
     suspend fun findFirstHost(
-        deviceName: String
+        deviceName: String,
+        onHostFound: (String) -> Unit = {}
     ): String? = withContext(Dispatchers.IO) {
         val prefix = getNetworkPrefix() ?: throw NoWifiException()
 
         for (i in 1..254) {
             val ip = "$prefix.$i"
+            onHostFound(ip)
             if (checkHost(ip, deviceName)) {
                 return@withContext ip
             }
@@ -40,14 +42,12 @@ class NetworkScanner @Inject constructor(
     suspend fun checkHost(ip: String, deviceName: String, withRetry: Boolean = false): Boolean {
         ensureWifi()
         val url = "http://$ip/$deviceName"
-        Log.d("checkHost", url)
         val response = withContext(Dispatchers.IO) {
             if (withRetry)
                 retrySafeApiCall { apiService.login(url) }
             else
                 safeApiCall { apiService.login(url) }
         }
-        Log.d("checkHost", response.toString())
         return when (response) {
             is Result.Success -> true
             is Result.Error -> false

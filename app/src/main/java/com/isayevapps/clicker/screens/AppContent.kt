@@ -82,30 +82,24 @@ fun AppContent(modifier: Modifier = Modifier.fillMaxSize()) {
             modifier = Modifier.padding(contentPadding)
         ) {
             composable<DeviceList> {
-                val viewModel = hiltViewModel<DevicesViewModel>()
                 DeviceListScreen(
-                    viewModel,
-                    navController,
+                    navigateToCoordinates = { navController.navigate(AddCoordinates(it)) },
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp)
                 )
             }
             composable<AddDevice> { backStackEntry ->
-                val viewModel = hiltViewModel<AddDeviceViewModel>()
                 AddDeviceScreen(
-                    viewModel,
-                    navController,
+                    navigateBack = navController::popBackStack,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp)
                 )
             }
             composable<AddCoordinates> { backStackEntry ->
-                val viewModel = hiltViewModel<AddCoordinateViewModel>()
                 AddCoordinatesScreen(
-                    viewModel,
-                    navController,
+                    navigateBack = navController::popBackStack,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 32.dp)

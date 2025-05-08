@@ -3,6 +3,7 @@ package com.isayevapps.clicker.screens.device.add
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -15,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.isayevapps.clicker.R
 import com.isayevapps.clicker.screens.common.AppTextField
@@ -23,42 +25,47 @@ import com.isayevapps.clicker.screens.common.LoadingScreen
 
 @Composable
 fun AddDeviceScreen(
-    viewmodel: AddDeviceViewModel,
-    navController: NavController,
+    navigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val uiState by viewmodel.uiState.collectAsState()
+    val viewModel = hiltViewModel<AddDeviceViewModel>()
+    val uiState by viewModel.uiState.collectAsState()
     when {
         uiState.isLoading -> LoadingScreen()
-        else -> AddDeviceContent(uiState, viewmodel, navController, modifier)
+        else -> AddDeviceContent(
+            modifier,
+            uiState,
+            viewModel::onEvent,
+            navigateBack
+        )
     }
 
 }
 
 @Composable
 fun AddDeviceContent(
-    uiState: AddDeviceUiState,
-    viewmodel: AddDeviceViewModel,
-    navController: NavController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    uiState: AddDeviceUiState = AddDeviceUiState(),
+    onEvent: (AddDeviceEvent) -> Unit = {},
+    navigateBack: () -> Unit = {}
 ) {
     if (uiState.error != null)
-        ErrorDialog(errorText = uiState.error.toString(), onDismiss = viewmodel::hideErrorDialog)
+        ErrorDialog(
+            errorText = uiState.error.toString(),
+            onDismiss = { onEvent(AddDeviceEvent.HideErrorDialog) })
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AppTextField(
             value = uiState.deviceName,
-            onValueChange = viewmodel::onDeviceNameChange,
+            onValueChange = { onEvent(AddDeviceEvent.OnDeviceNameChange(it)) },
             errorText = uiState.invalidUrlErrorText,
             label = stringResource(R.string.device_name),
         )
         Spacer(modifier = Modifier.weight(1f))
         Button(
-            enabled = viewmodel.addEnabled(),
+            enabled = uiState.isAddEnabled,
             onClick = {
-                viewmodel.addDevice {
-                    navController.navigateUp()
-                }
+                onEvent(AddDeviceEvent.AddDevice(onSuccess = navigateBack))
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -75,5 +82,5 @@ fun AddDeviceContent(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun AddDeviceScreenPreview() {
-    //AddDeviceScreen(Modifier.fillMaxSize())
+    AddDeviceContent(Modifier.fillMaxSize())
 }

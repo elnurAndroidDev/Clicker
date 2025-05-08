@@ -44,10 +44,11 @@ class DevicesViewModel @Inject constructor(
 
     fun deleteDevice(deviceId: Int) {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
             var device = deviceDao.getById(deviceId)
             var isIPActual = false
             try {
-                isIPActual = networkScanner.checkHost(device.ip, device.name)
+                isIPActual = networkScanner.checkHost(device.ip, device.name, true)
                 _uiState.value = _uiState.value.copy(isLoading = false)
             } catch (e: NoWifiException) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
