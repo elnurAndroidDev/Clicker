@@ -13,19 +13,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.isayevapps.clicker.R
 import com.isayevapps.clicker.screens.common.ClickerTopAppBar
-import com.isayevapps.clicker.screens.coordinates.add.AddCoordinateViewModel
 import com.isayevapps.clicker.screens.coordinates.add.AddCoordinatesScreen
 import com.isayevapps.clicker.screens.device.add.AddDeviceScreen
-import com.isayevapps.clicker.screens.device.add.AddDeviceViewModel
 import com.isayevapps.clicker.screens.device.list.DeviceListScreen
-import com.isayevapps.clicker.screens.device.list.DevicesViewModel
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -39,7 +35,7 @@ data class AddCoordinates(val deviceId: Int)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppContent(modifier: Modifier = Modifier.fillMaxSize()) {
+fun AppContent(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route

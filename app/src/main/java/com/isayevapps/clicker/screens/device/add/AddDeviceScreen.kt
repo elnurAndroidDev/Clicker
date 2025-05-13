@@ -17,7 +17,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.isayevapps.clicker.R
 import com.isayevapps.clicker.screens.common.AppTextField
 import com.isayevapps.clicker.screens.common.ErrorDialog
@@ -60,6 +59,12 @@ fun AddDeviceContent(
             onValueChange = { onEvent(AddDeviceEvent.OnDeviceNameChange(it)) },
             errorText = uiState.invalidUrlErrorText,
             label = stringResource(R.string.device_name),
+        )
+        AppTextField(
+            value = uiState.deviceIp,
+            onValueChange = { onEvent(AddDeviceEvent.OnDeviceIpChange(it)) },
+            errorText = uiState.invalidIPErrorText,
+            label = stringResource(R.string.device_ip),
         )
         Spacer(modifier = Modifier.weight(1f))
         Button(

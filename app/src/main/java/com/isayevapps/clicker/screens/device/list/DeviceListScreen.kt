@@ -12,7 +12,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -23,9 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.isayevapps.clicker.R
-import com.isayevapps.clicker.screens.AddCoordinates
 import com.isayevapps.clicker.screens.common.ErrorDialog
 import com.isayevapps.clicker.screens.common.LoadingScreen
 import com.isayevapps.clicker.screens.device.Device
@@ -38,11 +35,9 @@ fun DeviceListScreen(
     val viewModel = hiltViewModel<DevicesViewModel>()
     val uiState by viewModel.uiState.collectAsState()
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
-    var itemToDelete by rememberSaveable { mutableIntStateOf(-1) }
-
     val onDeviceClick = navigateToCoordinates
-    val onItemDelete: (Int) -> Unit = {
-        itemToDelete = it
+    val onDeviceDelete: (Device) -> Unit = {
+        viewModel.itemToDelete = it
         showDeleteDialog = true
     }
 
@@ -55,7 +50,7 @@ fun DeviceListScreen(
                 Button(
                     onClick = {
                         showDeleteDialog = false
-                        viewModel.deleteDevice(itemToDelete)
+                        viewModel.deleteDevice()
                     }) {
                     Text(stringResource(R.string.yes))
                 }
@@ -73,7 +68,7 @@ fun DeviceListScreen(
         else -> {
             if (uiState.error != null)
                 ErrorDialog(uiState.error.toString(), viewModel::hideErrorDialog)
-            DeviceListScreenContent(modifier, uiState.devices, onDeviceClick, onItemDelete)
+            DeviceListScreenContent(modifier, uiState.devices, onDeviceClick, onDeviceDelete)
         }
     }
 }
@@ -83,7 +78,7 @@ fun DeviceListScreenContent(
     modifier: Modifier = Modifier,
     devices: List<Device> = emptyList(),
     onDeviceClick: (Int) -> Unit = {},
-    onItemDelete: (Int) -> Unit = {}
+    onDeviceDelete: (Device) -> Unit = {}
 ) {
     Box(
         modifier = modifier,
@@ -97,10 +92,11 @@ fun DeviceListScreenContent(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(devices.size) { index ->
+                    val device = devices[index]
                     DeviceItem(
-                        device = devices[index],
-                        onClick = onDeviceClick,
-                        onDeleteClick = onItemDelete
+                        device = device,
+                        onClick = { onDeviceClick(device.id) },
+                        onDeleteClick = { onDeviceDelete(device) }
                     )
                 }
                 item {

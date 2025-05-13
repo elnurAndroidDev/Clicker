@@ -25,12 +25,12 @@ import com.isayevapps.clicker.screens.device.Device
 fun DeviceItem(
     device: Device,
     modifier: Modifier = Modifier,
-    onClick: (Int) -> Unit = {},
-    onDeleteClick: (Int) -> Unit = {}
+    onClick: () -> Unit = {},
+    onDeleteClick: () -> Unit = {}
 ) {
     OutlinedCard(
         modifier = modifier,
-        onClick = { onClick(device.id) }
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier
@@ -56,7 +56,7 @@ fun DeviceItem(
             }
 
             IconButton(
-                onClick = { onDeleteClick(device.id) }
+                onClick = onDeleteClick
             ) {
                 Icon(Icons.Filled.Delete, contentDescription = "Delete Device")
             }

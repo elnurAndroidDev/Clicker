@@ -1,7 +1,6 @@
 package com.isayevapps.clicker.screens.coordinates.add
 
 import android.annotation.SuppressLint
-import android.util.Log
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -16,8 +15,6 @@ import com.isayevapps.clicker.data.network.Result
 import com.isayevapps.clicker.data.network.retrySafeApiCall
 import com.isayevapps.clicker.screens.coordinates.Coordinate
 import com.isayevapps.clicker.screens.device.Device
-import com.isayevapps.clicker.utils.NetworkScanner
-import com.isayevapps.clicker.utils.NoWifiException
 import com.isayevapps.clicker.utils.timeStrToInt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +29,6 @@ class AddCoordinateViewModel @Inject constructor(
     private val apiService: ApiService,
     private val deviceDao: DeviceDao,
     private val coordinatesDao: CoordinatesDao,
-    private val networkScanner: NetworkScanner,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -46,34 +42,15 @@ class AddCoordinateViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            device = deviceDao.getById(deviceId).toDevice()
-            var isIPActual = false
-            try {
-                isIPActual = networkScanner.checkHost(device.ip, device.name, true)
-                _uiState.value = _uiState.value.copy(isLoading = false)
-            } catch (e: NoWifiException) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
-                return@launch
-            }
-            if (!isIPActual) {
-                var ip: String? = null
-                try {
-                    ip = networkScanner.findFirstHost(device.name)
-                } catch (e: Exception) {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
-                    return@launch
-                }
-                if (ip == null) {
-                    _uiState.value =
-                        _uiState.value.copy(isLoading = false, error = "Device not found")
-                    return@launch
-                }
-                device = device.copy(ip = ip)
-                deviceDao.update(device.toDeviceEntity())
+            device = withContext(Dispatchers.IO) {
+                deviceDao.getById(deviceId).toDevice()
             }
             coordinatesDao.getAllByDeviceIdFlow(deviceId).collect { coordinates ->
                 _uiState.value =
-                    _uiState.value.copy(coordinates = coordinates.map { it.toCoordinate() })
+                    _uiState.value.copy(
+                        coordinates = coordinates.map { it.toCoordinate() },
+                        isLoading = false
+                    )
             }
         }
     }
@@ -91,7 +68,12 @@ class AddCoordinateViewModel @Inject constructor(
             is AddCoordinateEvent.OnClicksCountMinus -> onClicksCountMinus(event.id)
             is AddCoordinateEvent.OnClicksCountPlus -> onClicksCountPlus(event.id)
             is AddCoordinateEvent.OnStepChange -> onStepChange(event.step)
-            is AddCoordinateEvent.OnTimeChange -> onTimeChange(event.hours, event.minutes, event.seconds, event.millis)
+            is AddCoordinateEvent.OnTimeChange -> onTimeChange(
+                event.hours,
+                event.minutes,
+                event.seconds,
+                event.millis
+            )
             is AddCoordinateEvent.OnHideDeleteDialog -> hideDeleteDialog()
             is AddCoordinateEvent.OnHideTimeDialog -> hideTimeDialog()
             is AddCoordinateEvent.OnDelete -> delete()

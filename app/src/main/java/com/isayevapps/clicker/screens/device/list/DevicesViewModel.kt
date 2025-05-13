@@ -8,8 +8,7 @@ import com.isayevapps.clicker.data.network.ApiService
 import com.isayevapps.clicker.data.network.DeleteAll
 import com.isayevapps.clicker.data.network.Result
 import com.isayevapps.clicker.data.network.retrySafeApiCall
-import com.isayevapps.clicker.utils.NetworkScanner
-import com.isayevapps.clicker.utils.NoWifiException
+import com.isayevapps.clicker.screens.device.Device
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,10 +22,10 @@ class DevicesViewModel @Inject constructor(
     private val apiService: ApiService,
     private val deviceDao: DeviceDao,
     private val coordinateDao: CoordinatesDao,
-    private val networkScanner: NetworkScanner
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DeviceListUiState())
     val uiState = _uiState.asStateFlow()
+    var itemToDelete: Device? = null
 
     init {
         loadDevices()
@@ -42,42 +41,18 @@ class DevicesViewModel @Inject constructor(
         }
     }
 
-    fun deleteDevice(deviceId: Int) {
+    fun deleteDevice() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            var device = deviceDao.getById(deviceId)
-            var isIPActual = false
-            try {
-                isIPActual = networkScanner.checkHost(device.ip, device.name, true)
-                _uiState.value = _uiState.value.copy(isLoading = false)
-            } catch (e: NoWifiException) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
-                return@launch
-            }
-            if (!isIPActual) {
-                var ip: String? = null
-                try {
-                    ip = networkScanner.findFirstHost(device.name)
-                } catch (e: Exception) {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
-                    return@launch
-                }
-                if (ip == null) {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = "Device not found")
-                    return@launch
-                }
-                device = device.copy(ip = ip)
-            }
-            val url = "http://${device.ip}/api"
+            val url = "http://${itemToDelete!!.ip}/api"
             val request = DeleteAll()
-            _uiState.value = _uiState.value.copy(isLoading = true)
             val result =
                 withContext(Dispatchers.IO) { retrySafeApiCall { apiService.deleteAll(url, request) } }
             when (result) {
                 is Result.Success -> {
                     withContext(Dispatchers.IO) {
-                        deviceDao.delete(deviceId)
-                        coordinateDao.deleteAllByDeviceId(deviceId)
+                        deviceDao.delete(itemToDelete!!.id)
+                        coordinateDao.deleteAllByDeviceId(itemToDelete!!.id)
                     }
                     _uiState.value = _uiState.value.copy(isLoading = false)
                 }
